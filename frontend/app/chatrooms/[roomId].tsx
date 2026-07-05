@@ -1,0 +1,224 @@
+import {
+  View,
+  Text,
+  Pressable,
+  TextInput,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
+import "@/global.css";
+import ChatMessageBubble from "@/components/ChatMessageBubble";
+import {useAuth,useUser} from "@clerk/clerk-expo"
+import React, { useEffect, useRef, useState } from "react";
+
+import {
+  useLocalSearchParams,
+  Stack,
+  useNavigation,
+  router,
+  useRouter,
+} from "expo-router";
+
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import api from "@/config/api";
+
+import { KeyboardAvoidingView, Platform } from "react-native";
+
+interface Message {
+  id: number;
+
+  content: string;
+
+  createdAt: string;
+
+  sender: {
+    name: string;
+
+    branch: string;
+
+    role: string;
+  };
+}
+
+interface RoomDetails {
+  id: number;
+
+  name: string;
+
+  description: string | null;
+}
+
+export default function ChatRoomDetails() {
+  const navigation = useNavigation();
+  const flatListRef = useRef<FlatList>(null);
+  const router = useRouter();
+  const { roomId } = useLocalSearchParams();
+
+  const [messages, setMessages] = useState<any[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState(false);
+
+  const [inputText, setInputText] = useState("");
+
+  const [roomDetails, setRoomDetails] = useState<RoomDetails | null>(null);
+
+  const fetchMessages = async () => {
+    console.log(`📡 Sending request to: /chatrooms/${roomId}`);
+
+    try {
+      setLoading(true);
+
+      setError(false);
+
+      const response = await api.get(`chatrooms/${roomId}`);
+
+      setMessages(response.data.messages || []);
+
+      setRoomDetails(response.data.room);
+    } catch (error) {
+      console.error("Failed to load channel logs:", error);
+
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!inputText.trim()) return;
+
+    try {
+      const respone = await api.post(`chatrooms/${roomId}/messages`, {
+        content: inputText,
+
+        senderId: 1,
+      });
+
+      setMessages((prevMessages) => [...prevMessages, respone.data]);
+
+      setInputText("");
+
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 60);
+    } catch (error) {
+      console.error("Failed to send text message:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!roomId || roomId === "undefined") return;
+
+    fetchMessages();
+  }, [roomId]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: roomDetails ? roomDetails.name : "Loading channel...",
+      headerShown: true,
+      headerLeft: () => (
+        <Pressable
+          onPress={() => router.replace("/chatrooms")}
+          style={{ paddingRight: 16, paddingLeft: 4 }}
+        >
+          <Text style={{ color: "black", fontSize: 16, fontWeight: "600" }}>
+            ◀ Channels
+          </Text>
+        </Pressable>
+      ),
+    });
+  }, [roomDetails, navigation]);
+
+  const renderMessageItem = ({ item }: { item: Message }) => {
+    const isMe = item.sender.name === "Payas";
+
+    return <ChatMessageBubble message={item} isMe={isMe} />;
+  };
+
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#f8fafc" }}
+      
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 90}
+      >
+        <View style={{ flex: 1 }}>
+          {loading ? (
+            <View
+              style={{
+                flex: 1,
+
+                justifyContent: "center",
+
+                alignItems: "center",
+              }}
+            >
+              <ActivityIndicator size="small" color="#3b82f6" />
+            </View>
+          ) : error ? (
+            <View
+              style={{
+                flex: 1,
+
+                justifyContent: "center",
+
+                alignItems: "center",
+
+                padding: 16,
+              }}
+            >
+              <Text style={{ color: "#ef4444", fontWeight: "500" }}>
+                Failed to sync chat thread
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef} // Connects your scrolling hook reference
+              data={Array.isArray(messages) ? messages : []} // Extra safety check anchor
+              keyExtractor={(item, index) =>
+                item.id?.toString() || index.toString()
+              }
+              renderItem={renderMessageItem}
+              extraData={messages} // Tells FlatList to instantly repaint on new updates
+              contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+              className="flex-1"
+              ListEmptyComponent={
+                <View style={{ padding: 20, alignItems: "center" }}>
+                  <Text style={{ color: "#64748b" }}>
+                    No messages in this room yet.
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </View>
+
+        <View className="p-3 bg-white border-t border-slate-200 flex-row items-center pb-5">
+          <View className="flex-1 bg-slate-100 rounded-full px-4 py-2">
+            <TextInput
+              className="text-slate-800 text-sm p-0 m-0"
+              placeholder="Type a message..."
+              value={inputText}
+              onChangeText={setInputText}
+            />
+          </View>
+
+          <Pressable
+            className="ml-3 bg-blue-500 w-10 h-10 rounded-full items-center justify-center active:bg-blue-600"
+            onPress={sendMessage}
+          >
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 16 }}>
+              ➔
+            </Text>
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}

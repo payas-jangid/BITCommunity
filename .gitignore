@@ -1,0 +1,17 @@
+# Node dependencies (Global match)
+node_modules/
+npm-debug.log*
+
+# Mac & Windows system files
+.DS_Store
+Thumbs.db
+
+# 🔒 CRITICAL: Absolute lock on environment variable secret files across all folders
+.env
+.env*.local
+.env.local
+
+# Expo/Mobile build directories
+.expo/
+dist/
+web-build/
