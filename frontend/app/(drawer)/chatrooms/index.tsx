@@ -12,7 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import api from "@/config/api";
 import ChatRoomCard from "@/components/ChatRoomCard";
 import { useRouter } from "expo-router";
-
+import { useAuth } from "@clerk/expo";
+import { useAuthenticated } from "@/config/api";
 interface ChatRoom {
   id: number;
   name: string;
@@ -21,11 +22,24 @@ interface ChatRoom {
 }
 
 export default function ChatRooms() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const authApi = useAuthenticated();
   const router = useRouter();
 
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  //searchQuery
+  const [searchQuery,setSearchQuery] = useState("");
+  const filteredRooms = rooms.filter((room) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true; // show everything when search is empty
+    return (
+      room.name?.toLowerCase().includes(query) ||
+      room.description?.toLowerCase().includes(query)
+    );
+  });
 
   //modal
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,9 +51,8 @@ export default function ChatRooms() {
     try {
       setLoading(true);
       setError(false);
-      const response = await api.get("/chatrooms");
+      const response = await authApi.get("/chatrooms");
       setRooms(response.data);
-
       console.log("🟢 SERVER RESPONDED WITH DATA:", response.data);
     } catch (error) {
       console.log("failed to fetch chatrooms : ", error);
@@ -54,7 +67,7 @@ export default function ChatRooms() {
 
     try {
       setCreating(true);
-      const response = await api.post("/chatrooms", {
+      const response = await authApi.post("/chatrooms", {
         roomName: newRoomName,
         roomType: newRoomDesc,
       });
@@ -72,8 +85,10 @@ export default function ChatRooms() {
   };
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
     fetchChatRooms();
-  }, []);
+  }, [isLoaded, isSignedIn]);
 
   const renderRootItem = ({ item }: { item: ChatRoom }) => (
     <ChatRoomCard
@@ -83,42 +98,52 @@ export default function ChatRooms() {
   );
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top"]}>
-      
-        <View className="px-4 pt-4 pb-2">
-          <Text className="text-slate-400 font-semibold text-xs uppercase tracking-wider">
-            Available Channels
+      <View className="px-4 pt-4 pb-2">
+        <Text className="text-slate-400 font-semibold text-xs uppercase tracking-wider">
+          Available Channels
+        </Text>
+      </View>
+
+      <TextInput
+        placeholder="eg. K25"
+        className="rounded-2xl bg-slate-300 m-5 p-5"
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        clearButtonMode="while-editing"
+      />
+
+      {loading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="small" color="#3b82f6" />
+          <Text className="text-slate-400 text-xs mt-2">
+            Loading campus rooms...
           </Text>
         </View>
+      ) : error ? (
+        <View className="flex-1 justify-center items-center p-6">
+          <Text className="text-sm font-bold text-red-500">
+            Server Unreachable
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredRooms}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderRootItem}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 4,
+            paddingBottom: 75,
+          }}
+        />
+      )}
 
-        {loading ? (
-          <View className="flex-1 justify-center items-center">
-            <ActivityIndicator size="small" color="#3b82f6" />
-            <Text className="text-slate-400 text-xs mt-2">
-              Loading campus rooms...
-            </Text>
-          </View>
-        ) : error ? (
-          <View className="flex-1 justify-center items-center p-6">
-            <Text className="text-sm font-bold text-red-500">
-              Server Unreachable
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={rooms}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderRootItem}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 4 }}
-          />
-        )}
-
-        <Pressable
-          className="absolute top-150 right-9 bg-blue-500 w-14 h-14 rounded-full items-center justify-center shadow-lg active:bg-blue-600"
-          onPress={() => setModalVisible(true)}
-        >
-          <Text className="text-white text-2xl font-bold">+</Text>
-        </Pressable>
-      
+      <Pressable
+        className="absolute top-150 right-9 bg-blue-500 w-14 h-14 rounded-full items-center justify-center shadow-lg active:bg-blue-600"
+        onPress={() => setModalVisible(true)}
+      >
+        <Text className="text-white text-2xl font-bold">+</Text>
+      </Pressable>
 
       <Modal
         animationType="slide"

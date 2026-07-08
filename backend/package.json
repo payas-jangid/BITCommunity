@@ -12,11 +12,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@clerk/backend": "^3.10.0",
+    "@clerk/express": "^2.1.35",
     "@prisma/client": "^6.19.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "svix": "^1.96.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

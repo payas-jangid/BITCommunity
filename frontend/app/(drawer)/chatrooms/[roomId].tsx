@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import "@/global.css";
 import ChatMessageBubble from "@/components/ChatMessageBubble";
-import {useAuth,useUser} from "@clerk/clerk-expo"
+
 import React, { useEffect, useRef, useState } from "react";
 
 import {
@@ -20,9 +20,9 @@ import {
 } from "expo-router";
 
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth,useUser } from "@clerk/expo";
 
-import api from "@/config/api";
-
+import { useAuthenticated } from "@/config/api";
 import { KeyboardAvoidingView, Platform } from "react-native";
 
 interface Message {
@@ -38,6 +38,8 @@ interface Message {
     branch: string;
 
     role: string;
+
+    ClerkId: string;
   };
 }
 
@@ -53,8 +55,12 @@ export default function ChatRoomDetails() {
   const navigation = useNavigation();
   const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
-  const { roomId } = useLocalSearchParams();
 
+  const { isLoaded, isSignedIn } = useAuth();
+  const authApi = useAuthenticated();
+  const {user} = useUser();
+
+  const { roomId } = useLocalSearchParams();
   const [messages, setMessages] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -73,7 +79,7 @@ export default function ChatRoomDetails() {
 
       setError(false);
 
-      const response = await api.get(`chatrooms/${roomId}`);
+      const response = await authApi.get(`chatrooms/${roomId}`);
 
       setMessages(response.data.messages || []);
 
@@ -91,11 +97,10 @@ export default function ChatRoomDetails() {
     if (!inputText.trim()) return;
 
     try {
-      const respone = await api.post(`chatrooms/${roomId}/messages`, {
-        content: inputText,
-
-        senderId: 1,
-      });
+      const respone = await authApi.post(
+        `chatrooms/${roomId}/messages`,
+        { content: inputText },
+      );
 
       setMessages((prevMessages) => [...prevMessages, respone.data]);
 
@@ -133,16 +138,14 @@ export default function ChatRoomDetails() {
   }, [roomDetails, navigation]);
 
   const renderMessageItem = ({ item }: { item: Message }) => {
-    const isMe = item.sender.name === "Payas";
+    const isMe =
+      item.sender?.ClerkId === user?.id;
 
     return <ChatMessageBubble message={item} isMe={isMe} />;
   };
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#f8fafc" }}
-      
-    >
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8fafc" }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
