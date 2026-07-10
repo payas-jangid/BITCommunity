@@ -59,7 +59,7 @@ function InitialLayout() {
     } else {
       if (!inAuthGroup) {
         console.log("🔒 Forcing navigation fallback to Sign-In screen...");
-        router.replace("/(auth)/get-started");
+        router.replace("/(auth)/sign-up");
       }
     }
   }, [isSignedIn, isLoaded, segments.join("/")]);

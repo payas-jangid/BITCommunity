@@ -12,6 +12,9 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
+
+app.use("/api/webhooks", webhookRouter);
+
 app.use(express.json());
 
 // 1. Initialize Clerk globally across your Express application instance
@@ -109,11 +112,11 @@ app.get("/api/chatrooms/:roomId/messages", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch message history" });
   }
 });
-app.get("/api/users/:clerkId",requireAuth,async (req,res) => {
-  const {clerkId} = req.params;
+app.get("/api/users/:clerkId", requireAuth, async (req, res) => {
+  const { clerkId } = req.params;
   try {
     const userRecord = await prisma.user.findUnique({
-      where : {ClerkId : clerkId},
+      where: { ClerkId: clerkId },
     });
 
     res.json(userRecord);
@@ -211,6 +214,35 @@ app.get("/api/chatrooms/:roomId", requireAuth, async (req, res) => {
   }
 });
 
+app.post("/api/users/:clerkId/update", requireAuth, async (req, res) => {
+  try {
+    const { clerkId } = req.params;
+    const { IncomingName, branchName, roleName } = req.body;
+
+    const tokenUserId = (req as any).auth.userId;
+    if (clerkId !== tokenUserId) {
+      return res
+        .status(403)
+        .json({ error: "Cannot edit someone else's profile" });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where:{ClerkId:clerkId},
+      data:{
+        name:IncomingName,
+        branch:branchName,
+        role:roleName,
+      }
+    });
+
+    res.json(updatedUser);
+    console.log("updated user");
+  } catch (error) {
+    console.log("failure in updating...",error);
+    res.status(500).json({ error: "Failed to update profile in database" });
+  }
+});
+
 app.post("/api/chatrooms", requireAuth, async (req, res) => {
   try {
     const { roomName, roomType } = req.body;
@@ -266,6 +298,6 @@ async function seedMockUser() {
 
 seedMockUser().then(() => {
   app.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`📡 Server wide-open listening at http://192.168.1.7:${PORT}`);
+    console.log(`📡 Server wide-open listening at ${PORT}`);
   });
 });

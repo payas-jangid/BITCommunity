@@ -11,7 +11,7 @@ export default function RootLayout() {
           drawerActiveTintColor: "#3b82f6",
           drawerInactiveTintColor: "#64748b",
           drawerStyle: {
-            backgroundColor: "#ffffff",
+            backgroundColor: "black",
             width: 260,
           },
           headerStyle: {
