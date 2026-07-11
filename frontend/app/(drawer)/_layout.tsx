@@ -1,3 +1,4 @@
+import ModernHeader from "@/components/modernHeader";
 import { Drawer } from "expo-router/drawer";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
@@ -7,7 +8,7 @@ export default function RootLayout() {
       <Drawer
         screenOptions={{
           headerShown: true,
-          headerTitleAlign: "center",
+          header:(props) => <ModernHeader {...props}/>,
           drawerActiveTintColor: "#3b82f6",
           drawerInactiveTintColor: "#64748b",
           drawerStyle: {

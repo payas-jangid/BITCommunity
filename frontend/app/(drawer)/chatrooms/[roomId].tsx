@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import "@/global.css";
 import ChatMessageBubble from "@/components/ChatMessageBubble";
-
+import {io,Socket} from "socket.io-client";
 import React, { useEffect, useRef, useState } from "react";
 
 import {
@@ -52,8 +52,12 @@ interface RoomDetails {
 }
 
 export default function ChatRoomDetails() {
+  const [socket,setSocket] = useState<Socket | null>(null);
+
   const navigation = useNavigation();
+
   const flatListRef = useRef<FlatList>(null);
+
   const router = useRouter();
 
   const { isLoaded, isSignedIn } = useAuth();
@@ -102,7 +106,7 @@ export default function ChatRoomDetails() {
         { content: inputText },
       );
 
-      setMessages((prevMessages) => [...prevMessages, respone.data]);
+
 
       setInputText("");
 
@@ -116,9 +120,36 @@ export default function ChatRoomDetails() {
 
   useEffect(() => {
     if (!roomId || roomId === "undefined") return;
-
     fetchMessages();
   }, [roomId]);
+
+  useEffect(() => {
+   const newSocket = io("http://10.112.254.196:5000");
+   setSocket(newSocket);
+
+   newSocket.emit("join_room", roomId);
+
+   newSocket.on("receive_message", (newMessage) => {
+     console.log(newMessage);
+     setMessages((prevMessages) => {
+      const alreadyExists = prevMessages.some((msg) => msg.id === newMessage.id);
+
+      if(alreadyExists){
+        return prevMessages;
+      }
+
+      return [...prevMessages,newMessage];
+     });
+
+     setTimeout(() => {
+       flatListRef.current?.scrollToEnd({ animated: true });
+     }, 60);
+   }); 
+
+   return () => {
+    newSocket.disconnect();
+   };
+  },[roomId]);
 
   useEffect(() => {
     navigation.setOptions({

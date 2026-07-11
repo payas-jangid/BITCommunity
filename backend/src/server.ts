@@ -4,12 +4,36 @@ import { PrismaClient } from "@prisma/client";
 import dotenv from "dotenv";
 import webhookRouter from "./routes/webhooks";
 import { clerkMiddleware, getAuth } from "@clerk/express";
+import {createServer} from "http";
+import {Server} from "socket.io";
 
 dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
+
+const httpServer = createServer(app);
+const io = new Server(httpServer,{
+  cors:{
+    origin: "*",
+    methods:["GET","POST"]
+  }
+});
+
+io.on("connection",(socket) => {
+  console.log(`🔌 New real-time connection established: ${socket.id}`);
+
+  socket.on("join_room",(roomId) => {
+    socket.join(roomId);
+    console.log(`👤 User joined chatroom: ${roomId}`);
+  });
+
+  socket.on("disconnect",() => {
+    console.log(`🛑 User disconnected: ${socket.id}`);
+  });
+
+})
 
 app.use(cors());
 
@@ -170,6 +194,8 @@ app.post(
         },
       });
 
+      io.to(String(roomId)).emit("receive_message",newMessage);
+
       res.json(newMessage);
     } catch (error) {
       console.error("Error creating message:", error);
@@ -297,7 +323,8 @@ async function seedMockUser() {
 }
 
 seedMockUser().then(() => {
-  app.listen(Number(PORT), "0.0.0.0", () => {
+  httpServer.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`📡 Server wide-open listening at ${PORT}`);
+    console.log(`⚡ WebSockets are armed and ready!`);
   });
 });
