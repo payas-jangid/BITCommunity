@@ -1,3 +1,4 @@
+import {GoogleGenAI} from "@google/genai";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import { PrismaClient } from "@prisma/client";
@@ -8,7 +9,8 @@ import {createServer} from "http";
 import {Server} from "socket.io";
 
 dotenv.config();
-
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+console.log("Key loaded:", !!process.env.GEMINI_API_KEY);
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
@@ -69,6 +71,31 @@ const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   (req as any).auth = auth;
   next();
 };
+
+app.post("/api/chat/assistant",requireAuth,
+  async (req : Request, res : Response) => {
+    try {
+
+      const {prompt} = req.body;
+
+      if(!prompt){
+        res.status(400).json({ error: "Prompt cannot be empty" });
+        return;
+      }
+
+      const response = await ai.models.generateContent({
+        model:'gemini-3.5-flash',
+        contents: prompt,
+      });
+  
+      res.json({reply : response.text});
+
+    } catch (error) {
+       console.error("Gemini API Error:", error);
+       res.status(500).json({ error: "Failed to generate AI response" });     
+    }
+  }
+);
 
 app.get("/", (req: Request, res: Response) => {
   res.send("🚀 BIT Community Server is running smoothly!");

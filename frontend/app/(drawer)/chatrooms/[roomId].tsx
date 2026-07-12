@@ -63,8 +63,8 @@ export default function ChatRoomDetails() {
 
   const router = useRouter();
 
-  const { isLoaded, isSignedIn } = useAuth();
   const authApi = useAuthenticated();
+  
   const {user} = useUser();
 
   const { roomId } = useLocalSearchParams();
