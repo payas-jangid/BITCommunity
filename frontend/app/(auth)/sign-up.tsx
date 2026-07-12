@@ -107,6 +107,14 @@ const signUp = () => {
           {fetchStatus === "fetching" ? "Creating..." : "Sign Up"}
         </Text>
       </Pressable>
+      <Pressable
+        onPress={() => router.replace("/(auth)/sign-in")}
+        className="border border-blue-200 rounded-3xl p-3"
+      >
+        <Text className="text-white font-bold">
+          Sign In
+        </Text>
+      </Pressable>
     </View>
   );
 };

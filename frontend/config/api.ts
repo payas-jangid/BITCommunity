@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from "axios";
 import { useAuth } from "@clerk/expo";
 import { useEffect, useMemo } from "react";
 
-export const BASE_URL = "http://10.112.254.196:5000/api";
+export const BASE_URL = "http://192.168.1.8:5000/api";
 
 const api = axios.create({
   baseURL: BASE_URL,

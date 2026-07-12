@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity,Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser } from "@clerk/expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,16 +15,17 @@ const ModernHeader = ({ navigation }: DrawerHeaderProps) => {
   const [userName,setUserName] = useState("");
   // Ensures the header doesn't get covered by the phone's notch/status bar
   const insets = useSafeAreaInsets();
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfileForHeader = async () => {
       if (!user?.id) return;
       try {
         const response = await authApi.get(`/users/${user.id}`);
-        if (response.data && response.data.name) {
-          // If they haven't set a name yet, fallback to "Student"
+        if (response.data) {
           const dbName = response.data.name.trim();
           setUserName(dbName !== "" ? dbName : "Student");
+          setAvatar(response.data.avatarUrl || null);
         }
       } catch (error) {
         console.log("Unable to fetch profile for header");
@@ -52,9 +53,16 @@ const ModernHeader = ({ navigation }: DrawerHeaderProps) => {
         </TouchableOpacity>
 
         {/* User Avatar */}
-        <View className="h-10 w-10 rounded-full bg-blue-100 justify-center items-center border border-blue-200">
-          <Text className="text-blue-700 font-bold text-lg">{initial}</Text>
-        </View>
+        {avatar ? (
+          <Image
+            source={{ uri: avatar }}
+            className="h-10 w-10 rounded-full bg-gray-200 border border-gray-200"
+          />
+        ) : (
+          <View className="h-10 w-10 rounded-full bg-blue-100 justify-center items-center border border-blue-200">
+            <Text className="text-blue-700 font-bold text-lg">{initial}</Text>
+          </View>
+        )}
 
         {/* Greeting Text */}
         <View>

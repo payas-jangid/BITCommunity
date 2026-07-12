@@ -1,15 +1,17 @@
-import { View, Text, Pressable, TouchableOpacity } from "react-native";
+import { View, Text, Pressable, TouchableOpacity, Image,ActivityIndicator } from "react-native";
 import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth, useUser } from "@clerk/expo";
 import { useAuthenticated } from "@/config/api";
 import { TextInput } from "react-native-gesture-handler";
+import { pickAndUploadImage } from "@/utils/cloudinary";
 interface UserData {
   name: string;
   email: string;
   branch: string;
   role: string;
   ClerkId: string;
+  avatarUrl: string;
 }
 const profile = () => {
   const authApi = useAuthenticated();
@@ -19,38 +21,54 @@ const profile = () => {
 
   const [editMode, setEditMode] = useState(false);
   const [changedName, setChangedName] = useState("");
-  const [branch,setBranch] = useState("");
-  const [role,setRole] = useState("");
-  const [saveChanges,setSaveChanges] = useState(false);
+  const [branch, setBranch] = useState("");
+  const [role, setRole] = useState("");
+
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const cancelChanges = () => {
     setBranch("");
     setRole("");
     setChangedName("");
     setEditMode(false);
-  }
+    setAvatar(userData?.avatarUrl || null);
+  };
   const makeChanges = async () => {
     try {
       const update = await authApi.post(`/users/${user?.id}/update`, {
         IncomingName: changedName,
         branchName: branch,
         roleName: role,
+        avatarUrl : avatar
       });
-      const updatedUser = await authApi.get(`/users/${user?.id}`)
+      const updatedUser = await authApi.get(`/users/${user?.id}`);
       setUserData(updatedUser.data);
       setBranch("");
       setRole("");
       setChangedName("");
     } catch (error) {
       console.log(error);
-    }finally{
+    } finally {
       setEditMode(false);
     }
-  }
+  };
+
+  const handlePickImage = async () => {
+    setIsUploading(true);
+    const imageUrl = await pickAndUploadImage();
+
+    if (imageUrl) {
+      setAvatar(imageUrl); // Temporarily show the new image on screen
+    }
+    setIsUploading(false);
+  };
   const fetchProfile = async () => {
     if (!user?.id) return;
     try {
       const response = await authApi.get(`/users/${user?.id}`);
       setUserData(response.data);
+      setAvatar(response.data.avatarUrl);
     } catch (error) {
       console.log("unable to fetch email");
     }
@@ -62,6 +80,37 @@ const profile = () => {
     <SafeAreaView style={{ flex: 1 }}>
       <View className="items-center h-full justify-between p-6">
         <View className="w-full p-2">
+
+          <View className="mb-6 items-center">
+            {avatar ? (
+              <Image
+                source={{ uri: avatar }}
+                className="w-24 h-24 rounded-full bg-gray-300"
+              />
+            ) : (
+              <View className="w-24 h-24 rounded-full bg-blue-100 items-center justify-center border border-blue-200">
+                <Text className="text-blue-700 font-bold text-3xl">
+                  {userData?.name ? userData.name.charAt(0).toUpperCase() : "B"}
+                </Text>
+              </View>
+            )}
+
+            {/* Cloudinary Upload Button (Only shows in Edit Mode) */}
+            {editMode && (
+              <TouchableOpacity
+                onPress={handlePickImage}
+                disabled={isUploading}
+                className="mt-3 bg-blue-500 px-4 py-2 rounded-full"
+              >
+                {isUploading ? (
+                  <ActivityIndicator color="white" size="small" />
+                ) : (
+                  <Text className="text-white font-bold">Change Picture</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
           <View className="border flex-row rounded-4xl justify-between mb-3 bg-gray-300  p-4 items-center">
             <Text>Your UserName : </Text>
             {editMode ? (
@@ -106,6 +155,7 @@ const profile = () => {
                 setChangedName(userData?.name || "");
                 setBranch(userData?.branch || "");
                 setRole(userData?.role || "");
+                setAvatar(userData?.avatarUrl || null);
                 setEditMode(true);
               }}
               className="border p-3 rounded-3xl bg-amber-200 mb-2"

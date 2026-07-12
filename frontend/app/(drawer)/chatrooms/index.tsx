@@ -133,7 +133,7 @@ export default function ChatRooms() {
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 4,
-            paddingBottom: 75,
+            paddingBottom: 150,
           }}
         />
       )}

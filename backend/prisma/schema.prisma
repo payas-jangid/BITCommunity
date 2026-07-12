@@ -18,6 +18,8 @@ model User{
   email String @unique
   ClerkId String @unique
 
+  avatarUrl String?
+
   branch String
 
   role String @default("STUDENT")
@@ -54,8 +56,9 @@ model ChatRoom{
 
 model Message{
   id Int @id @unique @default(autoincrement())
-  content String
+  content String?
   createdAt DateTime @default(now())
+  imageUrl String?
 
   roomId Int
   room ChatRoom @relation(fields: [roomId],references: [id],onDelete: Cascade)

@@ -156,12 +156,12 @@ app.post(
     console.log("📥 RECEIVED A POST REQUEST to messages endpoint!");
     try {
       const { roomId } = req.params;
-      const { content } = req.body;
+      const { content,imageUrl } = req.body;
 
       // Extract the verified identity directly from the secure middleware context
       const clerkId = (req as any).auth.userId;
 
-      if (!content || !content.trim()) {
+      if ((!content || !content.trim()) && !imageUrl) {
         res.status(400).json({ error: "Message content cannot be empty" });
         return;
       }
@@ -178,9 +178,10 @@ app.post(
 
       const newMessage = await prisma.message.create({
         data: {
-          content: content,
+          content: content ? content.trim() : null,
           roomId: Number(roomId),
           senderId: userProfile.id, // Binds the structural Postgres relational primary integer ID
+          imageUrl:imageUrl || null
         },
         include: {
           sender: {
@@ -243,7 +244,7 @@ app.get("/api/chatrooms/:roomId", requireAuth, async (req, res) => {
 app.post("/api/users/:clerkId/update", requireAuth, async (req, res) => {
   try {
     const { clerkId } = req.params;
-    const { IncomingName, branchName, roleName } = req.body;
+    const { IncomingName, branchName, roleName,avatarUrl } = req.body;
 
     const tokenUserId = (req as any).auth.userId;
     if (clerkId !== tokenUserId) {
@@ -258,6 +259,7 @@ app.post("/api/users/:clerkId/update", requireAuth, async (req, res) => {
         name:IncomingName,
         branch:branchName,
         role:roleName,
+        avatarUrl:avatarUrl
       }
     });
 
@@ -286,7 +288,14 @@ app.post("/api/chatrooms", requireAuth, async (req, res) => {
     });
 
     res.status(201).json(newRoom);
-  } catch (error) {
+  } catch (error : any) {
+    if (error.code === "P2002") {
+      res
+        .status(409)
+        .json({ error: "A chatroom with this exact name already exists." });
+      return;
+    }
+
     console.error("Error creating chatroom:", error);
     res.status(500).json({ error: "Failed to create chatroom" });
   }

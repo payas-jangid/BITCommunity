@@ -5,12 +5,13 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
+  TouchableOpacity
 } from "react-native";
 import "@/global.css";
 import ChatMessageBubble from "@/components/ChatMessageBubble";
 import {io,Socket} from "socket.io-client";
 import React, { useEffect, useRef, useState } from "react";
-
+import { pickAndUploadImage } from "@/utils/cloudinary";
 import {
   useLocalSearchParams,
   Stack,
@@ -40,7 +41,9 @@ interface Message {
     role: string;
 
     ClerkId: string;
+    
   };
+  imageUrl:string
 }
 
 interface RoomDetails {
@@ -75,6 +78,8 @@ export default function ChatRoomDetails() {
 
   const [roomDetails, setRoomDetails] = useState<RoomDetails | null>(null);
 
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   const fetchMessages = async () => {
     console.log(`📡 Sending request to: /chatrooms/${roomId}`);
 
@@ -102,8 +107,10 @@ export default function ChatRoomDetails() {
 
     try {
       const respone = await authApi.post(
-        `chatrooms/${roomId}/messages`,
-        { content: inputText },
+        `chatrooms/${roomId}/messages`,{
+          content:inputText,
+          imageUrl : null
+        }
       );
 
 
@@ -118,13 +125,35 @@ export default function ChatRoomDetails() {
     }
   };
 
+  const sendImageMessage = async () => {
+    setIsUploadingImage(true);
+    const uploadedUrl = await pickAndUploadImage();
+
+    if(uploadedUrl){
+      try {
+        const response = await authApi.post(`chatrooms/${roomId}/messages`,{
+          content : "",
+          imageUrl : uploadedUrl
+        });
+
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 60);
+      } catch (error) {
+        console.error("Failed to send image message:", error);
+      }finally{
+        setIsUploadingImage(false);
+      }
+    }
+  };
+
   useEffect(() => {
     if (!roomId || roomId === "undefined") return;
     fetchMessages();
   }, [roomId]);
 
   useEffect(() => {
-   const newSocket = io("http://10.112.254.196:5000");
+   const newSocket = io("http://192.168.1.8:5000");
    setSocket(newSocket);
 
    newSocket.emit("join_room", roomId);
@@ -132,11 +161,6 @@ export default function ChatRoomDetails() {
    newSocket.on("receive_message", (newMessage) => {
      console.log(newMessage);
      setMessages((prevMessages) => {
-      const alreadyExists = prevMessages.some((msg) => msg.id === newMessage.id);
-
-      if(alreadyExists){
-        return prevMessages;
-      }
 
       return [...prevMessages,newMessage];
      });
@@ -243,14 +267,33 @@ export default function ChatRoomDetails() {
             />
           </View>
 
-          <Pressable
-            className="ml-3 bg-blue-500 w-10 h-10 rounded-full items-center justify-center active:bg-blue-600"
-            onPress={sendMessage}
-          >
-            <Text style={{ color: "white", fontWeight: "bold", fontSize: 16 }}>
-              ➔
-            </Text>
-          </Pressable>
+          <View className="flex-row">
+            <TouchableOpacity
+              className="ml-3 bg-blue-500 w-10 h-10 rounded-full items-center justify-center active:bg-blue-600"
+              onPress={sendImageMessage}
+              disabled={isUploadingImage}
+            >
+              {isUploadingImage ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text
+                  style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
+                >
+                  +
+                </Text>
+              )}
+            </TouchableOpacity>
+            <Pressable
+              className="ml-3 bg-blue-500 w-10 h-10 rounded-full items-center justify-center active:bg-blue-600"
+              onPress={sendMessage}
+            >
+              <Text
+                style={{ color: "white", fontWeight: "bold", fontSize: 16 }}
+              >
+                ➔
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
